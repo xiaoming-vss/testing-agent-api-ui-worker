@@ -213,7 +213,18 @@ class StepExecutor:
             elif keyword == "assert_text":
                 return await self._execute_assert_text(context, resolved_step, fallback_order, started_at_iso, started_at)
             elif keyword == "assert_visible":
-                await resolve_locator(context.page, resolved_step).wait_for(state="visible", timeout=timeout_ms)
+                if not resolved_step.operation_value:
+                    raise ValueError("assert_visible 缺少 operation_value")
+                try:
+                    visible_timeout_ms = int(resolved_step.operation_value)
+                except ValueError as exc:
+                    raise ValueError("assert_visible 的 operation_value 必须为毫秒整数") from exc
+                if visible_timeout_ms <= 0:
+                    raise ValueError("assert_visible 的 operation_value 必须为正整数")
+                await resolve_locator(context.page, resolved_step).wait_for(
+                    state="visible",
+                    timeout=visible_timeout_ms,
+                )
             elif keyword == "assert_url":
                 return self._execute_assert_url(context, resolved_step, fallback_order, started_at_iso, started_at)
             elif keyword == "screenshot":
@@ -300,10 +311,12 @@ class StepExecutor:
     ) -> UiStepRunResult:
         """执行 assert_text 步骤"""
         step_name = _build_step_name(step, fallback_order)
+        if not step.operation_value:
+            raise ValueError("assert_text 缺少 operation_value")
         locator = resolve_locator(context.page, step)
         actual_value = ((await locator.text_content()) or "").strip()
         comparator = step.comparator or "contains"
-        _assert_by_comparator(actual_value, step.expect_value or "", comparator)
+        _assert_by_comparator(actual_value, step.operation_value, comparator)
 
         return UiStepRunResult(
             order_no=step.order_no or fallback_order,
@@ -329,7 +342,9 @@ class StepExecutor:
         step_name = _build_step_name(step, fallback_order)
         actual_value = context.page.url
         comparator = step.comparator or "contains"
-        _assert_by_comparator(actual_value, step.expect_value or "", comparator)
+        if not step.operation_value:
+            raise ValueError("assert_url 缺少 operation_value")
+        _assert_by_comparator(actual_value, step.operation_value, comparator)
 
         return UiStepRunResult(
             order_no=step.order_no or fallback_order,

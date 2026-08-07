@@ -61,6 +61,9 @@ heartbeat_interval_ms = 10000
 
 [ui]
 artifacts_dir = "./artifacts"
+artifacts_bind_host = "127.0.0.1"
+artifacts_port = 9010
+artifacts_base_url = "http://127.0.0.1:9010"
 headless = true
 slow_mo_ms = 0
 trace_enabled = true
@@ -71,6 +74,12 @@ snapshot_file = ""
 ```
 
 `worker_token` 要和 Go 后端配置里的 `security.worker.key` 一致。
+
+配置 `artifacts_base_url` 后，poll 模式会启动仅允许读取 PNG 截图的服务，并在上报结果时把
+本地 `screenshotPath` 转换为可直接访问的 URL。该临时服务不鉴权且不允许目录浏览。
+如果前端不在 worker 本机，请把 `127.0.0.1` 替换成前端可以访问的 worker IP 或域名；
+同时按需将 `artifacts_bind_host` 改为 `0.0.0.0` 并通过防火墙限制访问来源。多个 worker
+必须分别配置可访问的地址或端口。
 
 ## 启动
 

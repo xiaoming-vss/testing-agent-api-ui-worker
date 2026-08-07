@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import httpx
 
 from test_worker.contracts.types import WorkerConfig
@@ -69,12 +71,13 @@ def test_parse_ui_case_run_snapshot_keeps_screenshot_policy() -> None:
             "caseId": "case-1",
             "suiteId": "suite-1",
             "name": "Login",
-            "stepsJson": "[]",
+            "stepsJson": [],
         },
     })
 
     assert snapshot.suite is not None
     assert snapshot.suite.screenshot_policy == "after_each_step"
+    assert snapshot.case.steps_json == []
 
 
 def test_parse_ui_suite_run_snapshot_defaults_screenshot_policy() -> None:
@@ -92,6 +95,25 @@ def test_parse_ui_suite_run_snapshot_defaults_screenshot_policy() -> None:
 
     assert snapshot.suite is not None
     assert snapshot.suite.screenshot_policy == "on_failure"
+
+
+def test_serialize_result_converts_screenshot_path_to_worker_url(tmp_path) -> None:
+    config = replace(
+        _config(),
+        artifacts_root_dir=str(tmp_path),
+        artifacts_base_url="http://worker-a:9010",
+    )
+    client = ControlPlaneClient(config)
+
+    result = client._to_camel_case({
+        "step_results": [{
+            "screenshot_path": str(tmp_path / "run 1" / "step 1.png"),
+        }],
+    })
+
+    assert result["stepResults"][0]["screenshotPath"] == (
+        "http://worker-a:9010/run%201/step%201.png"
+    )
 
 
 def test_ui_case_snapshot_parses_suite_browser_settings() -> None:

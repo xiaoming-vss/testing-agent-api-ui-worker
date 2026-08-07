@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 
 from ..core import logger
+from ..core.artifact_server import build_artifact_url
 from ..contracts.types import (
     UiCaseRunResult,
     UiSuiteItemRunResult,
@@ -487,8 +488,15 @@ class ControlPlaneClient:
 
     def _to_camel_case(self, data: dict[str, Any]) -> dict[str, Any]:
         """将下划线命名转换为驼峰命名"""
-        result = {}
+        result: dict[str, Any] = {}
         for key, value in data.items():
+            if key == "screenshot_path" and isinstance(value, str):
+                value = build_artifact_url(
+                    value,
+                    self._config.artifacts_root_dir,
+                    self._config.artifacts_base_url,
+                )
+
             # 转换 key
             parts = key.split("_")
             camel_key = parts[0] + "".join(p.capitalize() for p in parts[1:])

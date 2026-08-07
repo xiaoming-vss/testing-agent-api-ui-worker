@@ -33,6 +33,9 @@ env/
 *.swo
 *~
 
+# Local runtime configuration (may contain worker credentials)
+config.toml
+
 # 测试
 .pytest_cache/
 .mypy_cache/

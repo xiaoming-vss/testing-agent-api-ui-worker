@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +19,7 @@ from .browser_options import (
     screenshot_policy_from_suite,
 )
 from .step_executor import StepExecutionContext, StepExecutor, now_iso
+from .step_normalizer import normalize_case_steps
 from ..contracts.types import (
     UiStepDefinition,
     UiStepRunResult,
@@ -44,33 +44,7 @@ def _normalize_steps(item: UiSuiteRunItemSnapshot) -> list[UiStepDefinition]:
     Raises:
         ValueError: stepsJson 格式错误时抛出
     """
-    if item.case.steps and len(item.case.steps) > 0:
-        return item.case.steps
-
-    if not item.case.steps_json:
-        return []
-
-    parsed = json.loads(item.case.steps_json)
-    if not isinstance(parsed, list):
-        raise ValueError("case.steps_json 必须是数组")
-
-    return [
-        UiStepDefinition(
-            keyword=s.get("keyword", ""),
-            order_no=s.get("orderNo"),
-            step_name=s.get("stepName"),
-            locator_type=s.get("locatorType"),
-            locator_value=s.get("locatorValue"),
-            operation_value=s.get("operationValue"),
-            expect_value=s.get("expectValue"),
-            timeout_ms=s.get("timeoutMs"),
-            continue_on_failure=s.get("continueOnFailure"),
-            enabled=s.get("enabled"),
-            description=s.get("description"),
-            comparator=s.get("comparator"),
-        )
-        for s in parsed
-    ]
+    return normalize_case_steps(item.case)
 
 
 def _build_artifact_dir(config: WorkerConfig, snapshot: UiTestSuiteRunSnapshot) -> str:

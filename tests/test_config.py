@@ -50,6 +50,9 @@ heartbeat_interval_ms = 9012
 
 [ui]
 artifacts_dir = "./tmp-artifacts"
+artifacts_bind_host = "127.0.0.1"
+artifacts_port = 9020
+artifacts_base_url = "http://worker-a:9020"
 headless = false
 slow_mo_ms = 25
 trace_enabled = false
@@ -69,6 +72,9 @@ snapshot_file = "./snapshot.json"
         self.assertEqual(config.request_timeout_ms, 5678)
         self.assertEqual(config.heartbeat_interval_ms, 9012)
         self.assertTrue(config.artifacts_root_dir.endswith("tmp-artifacts"))
+        self.assertEqual(config.artifacts_bind_host, "127.0.0.1")
+        self.assertEqual(config.artifacts_port, 9020)
+        self.assertEqual(config.artifacts_base_url, "http://worker-a:9020")
         self.assertFalse(config.default_headless)
         self.assertEqual(config.default_slow_mo_ms, 25)
         self.assertFalse(config.trace_enabled)

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 
 # 工作模式类型
@@ -50,6 +50,9 @@ class WorkerConfig:
     trace_enabled: bool
     screenshot_on_failure: bool
     snapshot_file: str
+    artifacts_bind_host: str = "127.0.0.1"
+    artifacts_port: int = 9010
+    artifacts_base_url: str = ""
 
 
 @dataclass
@@ -123,7 +126,7 @@ class UiCaseSnapshot:
     description: str | None = None
     enabled: bool | None = None
     order_no: int | None = None
-    steps_json: str | None = None
+    steps_json: list[dict[str, Any]] | None = None
     steps: list[UiStepDefinition] | None = None
 
 
