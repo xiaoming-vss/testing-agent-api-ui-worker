@@ -138,6 +138,13 @@ class TaskPoller:
                 "taskType": task.task_type,
             })
 
+        except asyncio.CancelledError:
+            logger.warn("task canceled during worker shutdown", {
+                "taskId": task.task_id,
+                "taskType": task.task_type,
+            })
+            await self._report_task_error(task, "worker shutting down")
+            raise
         except Exception as e:
             logger.error("task execution error", {
                 "taskId": task.task_id,
@@ -260,6 +267,13 @@ class TaskPoller:
                 "status": result.get("status"),
                 "success": result.get("success"),
             })
+        except asyncio.CancelledError:
+            logger.warn("api task canceled during worker shutdown", {
+                "taskId": task_id,
+                "taskType": task_type,
+            })
+            await self._report_api_task_error(task, "worker shutting down", started_at)
+            raise
         except Exception as e:
             logger.error("api task execution error", {
                 "taskId": task_id,

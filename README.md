@@ -113,6 +113,56 @@ uv run python -m test_worker
 uv run testing-agent-api-ui-worker
 ```
 
+## Docker 运行
+
+镜像固定使用与 `uv.lock` 一致的 Playwright `1.60.0`，并已包含 Chromium 及其
+Linux 系统依赖。构建镜像：
+
+```powershell
+docker build -t testing-agent-api-ui-worker:dev .
+```
+
+复制一份容器专用配置，不要把实际令牌写进镜像：
+
+```powershell
+Copy-Item config.example.toml config.docker.toml
+```
+
+至少需要调整以下配置：
+
+```toml
+[control_plane]
+# 必须是容器内可访问的地址，不能使用指向容器自身的 127.0.0.1。
+base_url = "http://host.docker.internal:8011"
+worker_token = "replace-with-worker-token"
+
+[ui]
+artifacts_dir = "/app/artifacts"
+artifacts_bind_host = "0.0.0.0"
+artifacts_port = 9010
+# 改成浏览器或 testing-agent 前端能够访问的 worker 地址。
+artifacts_base_url = "http://127.0.0.1:9010"
+headless = true
+```
+
+启动 poll worker：
+
+```powershell
+docker run --rm --init --ipc=host `
+  --name testing-agent-api-ui-worker `
+  -p 9010:9010 `
+  -v "${PWD}/config.docker.toml:/app/config.toml:ro" `
+  -v "${PWD}/artifacts:/app/artifacts" `
+  testing-agent-api-ui-worker:dev
+```
+
+Worker 会把容器的 SIGTERM/SIGINT 转换为异步取消，以便停止心跳、清理浏览器和截图
+服务，并为已领取的任务上报关闭错误。`--init` 用于回收孤儿浏览器子进程，
+`--ipc=host` 可避免 Chromium 因共享内存不足而崩溃。Linux 上若控制面运行在宿主机，需要额外添加
+`--add-host=host.docker.internal:host-gateway`。容器默认按 Playwright 官方的可信
+端到端测试模式以 root 运行；如果任务会访问不可信站点，应使用非 root 用户及
+Playwright 官方 seccomp 配置进一步隔离。
+
 ## 验证
 
 ```powershell

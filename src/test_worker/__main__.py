@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import signal
 import sys
 from pathlib import Path
 
@@ -194,10 +195,53 @@ async def _main() -> None:
     await _run_poll(config)
 
 
+async def _run_with_shutdown_signals() -> None:
+    """Run the worker and translate process signals into async cancellation."""
+    loop = asyncio.get_running_loop()
+    worker_task = asyncio.create_task(_main(), name="test-worker")
+    shutdown_signal: signal.Signals | None = None
+    registered_signals: list[signal.Signals] = []
+
+    def request_shutdown(received_signal: signal.Signals) -> None:
+        nonlocal shutdown_signal
+        if shutdown_signal is not None or worker_task.done():
+            return
+        shutdown_signal = received_signal
+        logger.info("test worker shutdown requested", {
+            "signal": received_signal.name,
+        })
+        worker_task.cancel()
+
+    for handled_signal in (signal.SIGTERM, signal.SIGINT):
+        try:
+            loop.add_signal_handler(
+                handled_signal,
+                request_shutdown,
+                handled_signal,
+            )
+            registered_signals.append(handled_signal)
+        except (NotImplementedError, RuntimeError):
+            # Windows event loops do not support add_signal_handler. There,
+            # asyncio.run and the KeyboardInterrupt fallback handle Ctrl+C.
+            continue
+
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        if shutdown_signal is None:
+            raise
+        logger.info("test worker shutdown completed", {
+            "signal": shutdown_signal.name,
+        })
+    finally:
+        for handled_signal in registered_signals:
+            loop.remove_signal_handler(handled_signal)
+
+
 def main() -> None:
     """入口函数"""
     try:
-        asyncio.run(_main())
+        asyncio.run(_run_with_shutdown_signals())
     except KeyboardInterrupt:
         logger.info("test worker interrupted by user")
     except Exception as e:
